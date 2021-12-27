@@ -5,6 +5,13 @@ var uiController = (function () {
     inputDescription: ".add__description",
     inputValue: ".add__value",
     addBtn: ".add__btn",
+    incomeList: ".income__list",
+    expensesList: ".expenses__list",
+    tusuvLabel: ".budget__value",
+    incomeLabel: ".budget__income--value",
+    expenseLabel: ".budget__expenses--value",
+    presentageLabel: ".budget__expenses--percentage",
+    containerDev: ".container",
   };
 
   return {
@@ -12,7 +19,7 @@ var uiController = (function () {
       return {
         type: document.querySelector(DOMstrings.inputType).value, // exp, inc
         description: document.querySelector(DOMstrings.inputDescription).value,
-        value: document.querySelector(DOMstrings.inputValue).value,
+        value: parseInt(document.querySelector(DOMstrings.inputValue).value),
       };
     },
 
@@ -20,16 +27,48 @@ var uiController = (function () {
       return DOMstrings;
     },
 
+    clearFields: function () {
+      var fields = document.querySelectorAll(
+        DOMstrings.inputDescription + ", " + DOMstrings.inputValue
+      );
+
+      var fieldsArr = Array.prototype.slice.call(fields);
+      fieldsArr.forEach(function (el, index, array) {
+        el.value = "";
+      });
+      fieldsArr[0].focus();
+    },
+
+    tusviigUzuuleh: function (tusuv) {
+      document.querySelector(DOMstrings.tusuvLabel).textContent = tusuv.tusuv;
+      document.querySelector(DOMstrings.incomeLabel).textContent =
+        tusuv.totalInc;
+      document.querySelector(DOMstrings.expenseLabel).textContent =
+        tusuv.totalExp;
+      if (tusuv.huvi === 0) {
+        document.querySelector(DOMstrings.presentageLabel).textContent =
+          tusuv.huvi;
+      } else {
+        document.querySelector(DOMstrings.presentageLabel).textContent =
+          tusuv.huvi + "%";
+      }
+    },
+
+    deleteListItem: function (id) {
+      var el = document.getElementById(id);
+      el.parentNode.removeChild(el);
+    },
+
     addListItem: function (item, type) {
       var html, list;
       if (type === "inc") {
-        list = ".income__list";
+        list = DOMstrings.incomeList;
         html =
-          '<div class="item clearfix" id="income-%id%"><div class="item__description">$$DESCRIPTION$$</div><div class="right clearfix"><div class="item__value">$$VALUE$$</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
+          '<div class="item clearfix" id="inc-%id%"><div class="item__description">$$DESCRIPTION$$</div><div class="right clearfix"><div class="item__value">$$VALUE$$</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
       } else {
-        list = ".expenses__list";
+        list = DOMstrings.expensesList;
         html =
-          '<div class="item clearfix" id="expense-%ID%"><div class="item__description">$$DESCRIPTION$$</div><div class="right clearfix"><div class="item__value">$$VALUE$$</div><div class="item__percentage">21%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
+          '<div class="item clearfix" id="exp-%id%"><div class="item__description">$$DESCRIPTION$$</div><div class="right clearfix"><div class="item__value">$$VALUE$$</div><div class="item__percentage">21%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
       }
       html = html.replace("%id%", item.id);
       html = html.replace("$$DESCRIPTION$$", item.description);
@@ -55,6 +94,14 @@ var financeController = (function () {
     this.value = value;
   };
 
+  var calculateTotal = function (type) {
+    var sum = 0;
+    data.items[type].forEach(function (el) {
+      sum = sum + el.value;
+    });
+    data.totals[type] = sum;
+  };
+
   // private data
   var data = {
     items: {
@@ -66,9 +113,43 @@ var financeController = (function () {
       inc: 0,
       exp: 0,
     },
+
+    tusuv: 0,
+
+    huvi: 0,
   };
 
   return {
+    tusuvTootsooloh: function () {
+      calculateTotal("inc");
+
+      calculateTotal("exp");
+
+      data.tusuv = data.totals.inc - data.totals.exp;
+      data.huvi = Math.round((data.totals.exp / data.totals.inc) * 100);
+    },
+
+    tusuvAvah: function () {
+      return {
+        tusuv: data.tusuv,
+        huvi: data.huvi,
+        totalInc: data.totals.inc,
+        totalExp: data.totals.exp,
+      };
+    },
+
+    deleteItem: function (type, id) {
+      var ids = data.items[type].map(function (el) {
+        return el.id;
+      });
+
+      var index = ids.indexOf(id);
+
+      if (index !== -1) {
+        data.items[type].slice(index, 1);
+      }
+    },
+
     addItem: function (type, desc, val) {
       var item, id;
 
@@ -100,17 +181,24 @@ var appController = (function (uiController, financeController) {
     // 1. Оруулах өгөгдлийг дэлгэцээс олж авна.
     var input = uiController.getInput();
 
-    // 2. Олж авсан өгөгдлүүдээ санхүүгийн контроллерт дамжуулж тэнд хадгална.
-    var item = financeController.addItem(
-      input.type,
-      input.description,
-      input.value
-    );
+    if (input.description !== "" && input.value !== "") {
+      // 2. Олж авсан өгөгдлүүдээ санхүүгийн контроллерт дамжуулж тэнд хадгална.
+      var item = financeController.addItem(
+        input.type,
+        input.description,
+        input.value
+      );
 
-    // 3. Олж авсан өгөгдлүүдээ вэб дээрээ тохирох хэсэгт нь гаргана
-    uiController.addListItem(item, input.type);
-    // 4. Төсвийг тооцоолно
-    // 5. Эцсийн үлдэгдэл, тооцоог дэлгэцэнд гаргана.
+      // 3. Олж авсан өгөгдлүүдээ вэб дээрээ тохирох хэсэгт нь гаргана
+      uiController.addListItem(item, input.type);
+      uiController.clearFields();
+      // 4. Төсвийг тооцоолно
+      financeController.tusuvTootsooloh();
+      // 5. Эцсийн үлдэгдэл.
+      var tusuv = financeController.tusuvAvah();
+      // 5. Төсвийн тооцоог дэлгэцэнд гаргана.
+      uiController.tusviigUzuuleh(tusuv);
+    }
   };
 
   var setupEventListeners = function () {
@@ -125,11 +213,31 @@ var appController = (function (uiController, financeController) {
         ctrlAddItem();
       }
     });
+
+    document
+      .querySelector(DOM.containerDev)
+      .addEventListener("click", function (event) {
+        var id = event.target.parentNode.parentNode.parentNode.parentNode.id;
+        if (id) {
+          var arr = id.split("-");
+          var type = arr[0];
+          var itemId = parseInt(arr[1]);
+
+          financeController.deleteItem(type, itemId);
+          uiController.deleteListItem(id);
+        }
+      });
   };
 
   return {
     init: function () {
       console.log("Application started...");
+      uiController.tusviigUzuuleh({
+        tusuv: 0,
+        huvi: 0,
+        totalInc: 0,
+        totalExp: 0,
+      });
       setupEventListeners();
     },
   };
